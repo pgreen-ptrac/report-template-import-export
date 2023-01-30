@@ -7,12 +7,15 @@ import utils.log_handler as logger
 log = logger.log
 from utils.auth_utils import Auth
 import utils.input_utils as input
+import utils.general_utils as utils
 from api import *
 
 
 # import handler
 def handle_import(auth):
-    json_data = input.load_json_data("Enter the JSON file you want to import into Plextrac")
+    loaded_file = input.load_json_data("Enter the JSON file you want to import into Plextrac")
+    json_data = loaded_file.get("data")
+    log.debug(json_data)
     if (
         json_data.get('template_name') == None or
         json_data.get('export_template') == None
@@ -36,11 +39,11 @@ def handle_export(auth):
 
     log.info(f'List of Report Templates in tenant {auth.tenant_id}:')
     for index, report_template in enumerate(report_templates):
-        log.info(f'Index: {index}   Name: {report_template.get("data").get("template_name")}')
+        log.info(f'Index: {index+1}   Name: {report_template.get("data").get("template_name")}')
 
-    report_template_index = input.user_list("Please enter the report template ID from the list above that you want to export.", "Index out of range.", len(report_templates))
+    report_template_index = input.user_list("Please enter the report template ID from the list above that you want to export.", "Index out of range.", len(report_templates)) - 1
     report_template_id = report_templates[report_template_index]["data"]["doc_id"]
-    log.info(f'Selected Report Template: {report_template_index} - {report_templates[report_template_index]["data"]["template_name"]}')
+    log.info(f'Selected Report Template: {report_template_index + 1} - {report_templates[report_template_index]["data"]["template_name"]}')
 
     log.info('Retrieving Report Template Data')
     response = api.report_template.get(auth.base_url, auth.auth_headers, auth.tenant_id, report_template_id)
@@ -57,7 +60,7 @@ def handle_export(auth):
         log.info(f'Creating \'{export_file_dir}\' folder')
         os.mkdir('exports')
     
-    export_file_name = f'Report_Template_{data["template_name"].replace(" ", "_").replace("/","-")}.json'
+    export_file_name = utils.sanitize_name_for_file(f'Report_Template_{data["template_name"]}.json')
     export_file_path = export_file_dir + '/' + export_file_name
     try:
         with open(export_file_path, 'w', encoding="utf8") as file:
