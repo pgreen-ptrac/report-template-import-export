@@ -1,11 +1,73 @@
 import yaml
+import os
+import json
 
 import settings
 import utils.log_handler as logger
 log = logger.log
 from utils.auth_utils import Auth
 import utils.input_utils as input
+from api import *
 
+
+# import handler
+def handle_import(auth):
+    json_data = input.load_json_data("Enter the JSON file you want to import into Plextrac")
+    if (
+        json_data.get('template_name') == None or
+        json_data.get('export_template') == None
+    ):
+        if input.retry('Err: Json file is not a valid Report Template'):
+            return handle_import(auth)
+
+    response = api.report_template.import_from_json(auth.base_url, auth.get_auth_headers(), auth.tenant_id, json_data)    
+    if response.get('status') == "success":
+        log.success(f'Report Template imported')
+        log.info(f'You now have the "{json_data["template_name"]}" option in the Report Template dropdown field on the Report Details tab')
+        log.info(f'View or edit the new report template in the Template section of the Account Admin page')
+    else:
+        if input.retry("Import failed."):
+            return handle_import(auth)
+   
+
+# export handler
+def handle_export(auth):
+    report_templates = api.report_template.list(auth.base_url, auth.get_auth_headers(), auth.tenant_id)
+
+    log.info(f'List of Report Templates in tenant {auth.tenant_id}:')
+    for index, report_template in enumerate(report_templates):
+        log.info(f'Index: {index}   Name: {report_template.get("data").get("template_name")}')
+
+    report_template_index = input.user_list("Please enter the report template ID from the list above that you want to export.", "Index out of range.", len(report_templates))
+    report_template_id = report_templates[report_template_index]["data"]["doc_id"]
+    log.info(f'Selected Report Template: {report_template_index} - {report_templates[report_template_index]["data"]["template_name"]}')
+
+    log.info('Retrieving Report Template Data')
+    response = api.report_template.get(auth.base_url, auth.auth_headers, auth.tenant_id, report_template_id)
+    data = {
+        "template_name": response.get('template_name'),
+        "export_template": "default",
+        "custom_fields": response.get('custom_fields', []),
+        "report_custom_fields": response.get('report_custom_fields', [])
+    }
+
+    log.info('Exporting Report Template data')
+    export_file_dir = "exports"
+    if os.path.isdir(export_file_dir) != True:
+        log.info(f'Creating \'{export_file_dir}\' folder')
+        os.mkdir('exports')
+    
+    export_file_name = f'Report_Template_{data["template_name"].replace(" ", "_").replace("/","-")}.json'
+    export_file_path = export_file_dir + '/' + export_file_name
+    try:
+        with open(export_file_path, 'w', encoding="utf8") as file:
+            json.dump(data, file)
+    except Exception as e:
+        log.exception(f'Error creating file: {e}')
+        return
+
+    log.success(f'Report Template exported')
+    
 
 if __name__ == '__main__':
     for i in settings.script_info:
@@ -13,7 +75,6 @@ if __name__ == '__main__':
 
     with open("config.yaml", 'r') as f:
         args = yaml.safe_load(f)
-
 
     """
     Authenticate to Plextrac Instance
@@ -24,84 +85,11 @@ if __name__ == '__main__':
     auth = Auth(args)
     auth.handle_authentication()
 
+    operation = input.user_options("Do you want to import or export a Plextrac Report Template", "Invalid option.", ['import', 'export'])
 
-    """
-    Using Authentication
-
-    Starting from this authentication example, you can now build out your script and call other endpoints
-    The call to auth.handle_authenticate() above will authenticate the user and update the auth obj to hold all authentication information
-    When calling an endpoint you can use the following data
-
-    auth.base_url - the url the user was authenticated to (ex. https://example.plextrac.com)
-    auth.get_auth_headers() - to get current Authorization headers (handles reauthenticating if expired)
-    auth.tenant_id - to get the tenant id the user was authenticated to (required by some endpoints)
-    """
-    log.info(f'Aauthenticated to {auth.base_url} on tenant {auth.tenant_id}')
-    log.info(f'Authentication headers: {auth.get_auth_headers()}')
-
-
-    """
-    Built-in API Endpoints
-
-    You can use the currently built-out API endpoints in the /api folder. This is a wrapper that contains the specific url of certain endpoints.
-    
-    Use the import statement: from api import *
-    
-    You can now make a request by calling api.<object>.<endpoint>() and adding the necessary parameters
-    ex: response = api.client.get(auth.base_url, auth.get_auth_headers(), client_id)
-    """
-
-
-    """
-    Logging Wrapper
-
-    Any logging can be done using a custom wrapper for the Python logging module. This wrapper handles color formatting of logs to the console and optional output file.
-    
-    Use the import statement, then set the reference to the custom logging wrapper:
-    import utils.log_handler as logger
-    log = logger.log
-
-    You can now write to logs with log.<message-type>(<message>)
-
-    Define the following logging setting in settings.py:
-    - console logging level
-    - output file logging level
-    - whether the script should save logs to a file
-    """
-    log.warning("You are warned")
-    log.info("Here is some info")
-    log.success("Congrats!")
-
-
-    """
-    Built-in User Input Handling
-
-    You can use a wrapper for the Python input() function by utilizing the input_utils.py. This will add a prefix to all user prompts and
-    define some validation rules as to the user input.
-
-    Use the import statement: import utils.input_utils as input
-    
-    You can now use the following wrapper options:
-    - user_options
-    - user_list
-    - retry
-    - continue_anyways
-    - load_json_data
-    - load_csv_data
-
-    All options will continue to prompt the user until a valid input has been entered or selected, or exit the script.
-    """
-    # user_options
-    val = input.user_options("Select an option", "That wasn't a valid optoin", ["1", "2", "3"])
-    log.info(f'Selected {val}')
-
-    # user_list
-    option_list = ["apple", "banana", "pear"]
-    for index, option in enumerate(option_list):
-        log.info(f'{index} - {option}')
-    val = input.user_list("Select an option", "That wasn't a valid optoin", len(option_list))
-    log.info(f'Selected {val}')
-
-    # continue_anyways
-    val = input.continue_anyways("You ran into an example problem")
-    log.info(f'Selected {val}')
+    if operation == 'import':
+        log.info('---Loading Imports---')
+        handle_import(auth)
+    if operation == 'export':
+        log.info('---Loading Exports---')
+        handle_export(auth)

@@ -13,10 +13,10 @@ verify_ssl = True
 
 # description of script that will be print line by line when the script is run
 script_info = ["====================================================================",
-               "= Base Script                                                      =",
-               "=------------------------------------------------------------------=",
-               "= Use this script as a starting point to utilize existing          =",
-               "= funtionality when developing a script for the Plextrac API       =",
-               "=                                                                  =",
-               "===================================================================="
+               "= Report Template Import/Export Script                            =",
+               "=-----------------------------------------------------------------=",
+               "=  Used to export a report template and save it as a JSON file.   =",
+               "=  You can then keep the file as a backup or import it to a       =",
+               "=  different instance of Plextrac.                                =",
+               "==================================================================="
             ]
