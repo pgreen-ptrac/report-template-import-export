@@ -54,6 +54,12 @@ class Auth():
         #validate
         try:
             response = api.auth.root(self.base_url, {}) # non authenticated endpoint - does not require any headers - used to see if we can connect to the api
+            log.debug(response)
+            if response.get("statusCode") != None: # when the response is non 200, response can still be read as json payload
+                if input.retry("Could not validate URL. Either the API is offline or it was entered incorrectly\nExample: https://company.plextrac.com"):
+                    self.cf_token = None
+                    self.base_url = None
+                    return self.handle_instance_url()
 
             try:
                 if response.get('text') == "Authenticate at /authenticate":
