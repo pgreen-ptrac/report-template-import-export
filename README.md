@@ -1,4 +1,4 @@
-# api-script-report-template-import-export
+# report-template-import-export
 Currently Plextrac doesn't have the ability to import or export Report Templates. This script adds that functionality by saving the payload of a GET request to a json file. This json file can be passed around and send as the payload of a CREATE request to import the Report Template back into the platform or into another instance of Plextrac.
 
 The main using of importing Report Templates is during new customer onboarding when the Professional Services team has been tasked with creating a Jinja Export Template. This Jinja template will pull info from specific fields in a Plextrac report and the Report Template helps automatically setup those fields instead of manual creation for each new report. Without the import/export functionality a new customer will have to create the Report Template in their instance. With the functionality, they can save time by importing a Report Template provided by the Professional Services team.
